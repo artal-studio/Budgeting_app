@@ -71,3 +71,40 @@ create policy "transactions_owner" on transactions
 --   update transactions set account_id = (select id from accounts where user_id = transactions.user_id limit 1);
 --   alter table transactions alter column account_id set not null;
 -- ---------------------------------------------------------------------------
+
+-- ===========================================================================
+-- MIGRATION v2: run this if you already have data from the first version.
+-- Purely additive — does not touch, rename, or delete any existing rows.
+-- Adds: transfers between accounts.
+-- ===========================================================================
+
+alter table transactions add column if not exists transfer_to_account_id uuid references accounts(id) on delete cascade;
+
+alter table transactions drop constraint if exists transactions_kind_check;
+alter table transactions add constraint transactions_kind_check check (kind in ('expense','income','transfer'));
+
+alter table transactions drop constraint if exists transactions_transfer_check;
+alter table transactions add constraint transactions_transfer_check check (
+  (kind = 'transfer' and transfer_to_account_id is not null and transfer_to_account_id <> account_id)
+  or (kind <> 'transfer' and transfer_to_account_id is null)
+);
+
+-- If "drop constraint" above errors because your constraint has a different
+-- auto-generated name, find the real name first with:
+--   select conname from pg_constraint where conrelid = 'transactions'::regclass;
+-- then drop that name instead.
+
+-- ---------------------------------------------------------------------------
+-- ONE-TIME CLEANUP: de-duplicates transactions that were imported more than
+-- once (safe to run any time — keeps exactly one copy of each identical row,
+-- deletes the rest). Does nothing if you have no duplicates.
+-- ---------------------------------------------------------------------------
+delete from transactions t
+using transactions t2
+where t.id > t2.id
+  and t.account_id = t2.account_id
+  and t.occurred_on = t2.occurred_on
+  and t.kind = t2.kind
+  and coalesce(t.category_id::text,'') = coalesce(t2.category_id::text,'')
+  and t.amount = t2.amount
+  and coalesce(t.description,'') = coalesce(t2.description,'');

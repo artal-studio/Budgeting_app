@@ -11,6 +11,7 @@
 <link rel="stylesheet" href="style.css" />
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 </head>
 <body>
 
@@ -46,7 +47,7 @@
     <button data-view="transactions">Transactions</button>
     <button data-view="accounts">Accounts</button>
     <button data-view="reports">Reports</button>
-    <button data-view="data">Import / Export</button>
+    <button data-view="data">Backup</button>
   </nav>
 
   <!-- ADD -->
@@ -55,6 +56,7 @@
       <div class="kind-toggle">
         <button type="button" data-kind="expense" class="active">Expense</button>
         <button type="button" data-kind="income">Income</button>
+        <button type="button" data-kind="transfer">Transfer</button>
       </div>
       <p class="error-text" id="add-needs-account" style="display:none;">
         No accounts yet — <button class="link" data-goto="accounts">add one</button> before recording a transaction.
@@ -73,13 +75,19 @@
         <label for="tx-account">Account</label>
         <select id="tx-account"></select>
       </div>
-      <div class="field">
-        <label for="tx-category">Category</label>
-        <select id="tx-category"></select>
+      <div class="field" id="to-account-field" style="display:none;">
+        <label for="tx-to-account">To account</label>
+        <select id="tx-to-account"></select>
       </div>
-      <div class="field" id="new-category-field" style="display:none;">
-        <label for="tx-new-category">New category name</label>
-        <input id="tx-new-category" type="text" placeholder="e.g. Groceries" />
+      <div id="category-section">
+        <div class="field">
+          <label for="tx-category">Category</label>
+          <select id="tx-category"></select>
+        </div>
+        <div class="field" id="new-category-field" style="display:none;">
+          <label for="tx-new-category">New category name</label>
+          <input id="tx-new-category" type="text" placeholder="e.g. Groceries" />
+        </div>
       </div>
       <div class="field">
         <label for="tx-desc">Description (optional)</label>
@@ -87,6 +95,12 @@
       </div>
       <button class="primary" id="tx-submit">Save transaction</button>
       <p class="error-text" id="tx-error"></p>
+    </div>
+
+    <div class="panel">
+      <h3 class="section-title">Last 5</h3>
+      <ul class="tx-list" id="add-recent-list"></ul>
+      <p class="empty" id="add-recent-empty" style="display:none;">No transactions yet.</p>
     </div>
   </section>
 
@@ -138,35 +152,64 @@
       </div>
       <button class="secondary" id="rep-run">Run report</button>
 
-      <h3 class="section-title">Summary</h3>
-      <div class="report-bar-row"><span>Income</span><span></span><span class="report-total" id="rep-income-total">–</span></div>
-      <div class="report-bar-row"><span>Expenses</span><span></span><span class="report-total" id="rep-expense-total">–</span></div>
-      <div class="report-bar-row"><span>Net</span><span></span><span class="report-total" id="rep-net-total">–</span></div>
+      <p class="rep-summary" id="rep-summary-text">Run a report to see this.</p>
 
-      <h3 class="section-title">Expenses by category</h3>
-      <div id="rep-expense-breakdown"><p class="empty">Run a report to see this.</p></div>
+      <h3 class="section-title">Income vs. expenses vs. net</h3>
+      <div class="chart-box"><canvas id="chart-summary-bar"></canvas></div>
 
-      <h3 class="section-title">Income by category</h3>
-      <div id="rep-income-breakdown"><p class="empty">Run a report to see this.</p></div>
+      <div class="chart-grid">
+        <div>
+          <h3 class="section-title">Expenses by category</h3>
+          <div class="chart-box"><canvas id="chart-expense-pie"></canvas></div>
+          <div id="rep-expense-list"><p class="empty">Run a report to see this.</p></div>
+        </div>
+        <div>
+          <h3 class="section-title">Income by category</h3>
+          <div class="chart-box"><canvas id="chart-income-pie"></canvas></div>
+          <div id="rep-income-list"><p class="empty">Run a report to see this.</p></div>
+        </div>
+      </div>
     </div>
   </section>
 
-  <!-- DATA -->
+  <!-- DATA / BACKUP -->
   <section class="view" id="view-data">
     <div class="panel">
-      <h3 class="section-title">Export</h3>
-      <div class="csv-actions">
-        <button class="secondary" id="export-all">Export all as CSV</button>
-      </div>
-      <h3 class="section-title">Import</h3>
-      <div class="csv-actions">
-        <input type="file" id="import-file" accept=".csv" />
-      </div>
       <p class="csv-hint">
-        Expected columns: <code>date,kind,account,category,amount,description</code><br>
-        <code>date</code> as YYYY-MM-DD, <code>kind</code> as expense or income. Unknown accounts and categories are created automatically (new accounts start at a $0 starting balance — edit it on the Accounts tab afterwards if needed).
+        Three plain CSV files together are your full backup. Restore order that
+        works best: Accounts, then Categories, then Transactions.
       </p>
-      <p class="error-text" id="import-error"></p>
+
+      <h3 class="section-title">Accounts</h3>
+      <div class="csv-actions">
+        <button class="secondary" id="export-accounts">Export accounts CSV</button>
+        <label class="secondary file-label">Import accounts CSV<input type="file" id="import-accounts" accept=".csv" hidden></label>
+      </div>
+      <p class="error-text" id="import-accounts-error"></p>
+      <p class="csv-hint">Columns: <code>name,starting_balance</code>. Matching names update the starting balance; new names create the account.</p>
+
+      <h3 class="section-title">Categories</h3>
+      <div class="csv-actions">
+        <button class="secondary" id="export-categories">Export categories CSV</button>
+        <label class="secondary file-label">Import categories CSV<input type="file" id="import-categories" accept=".csv" hidden></label>
+      </div>
+      <p class="error-text" id="import-categories-error"></p>
+      <p class="csv-hint">Columns: <code>name,kind</code> (kind is expense or income).</p>
+
+      <h3 class="section-title">Transactions</h3>
+      <div class="csv-actions">
+        <button class="secondary" id="export-transactions">Export transactions CSV</button>
+        <label class="secondary file-label">Import transactions CSV<input type="file" id="import-transactions" accept=".csv" hidden></label>
+      </div>
+      <p class="error-text" id="import-transactions-error"></p>
+      <p class="csv-hint">
+        Columns: <code>id,date,kind,account,to_account,category,amount,description</code><br>
+        Rows with an <code>id</code> that already exists update that transaction instead of
+        duplicating it — this is what makes re-importing your own export safe. Leave
+        <code>id</code> blank for new rows. <code>to_account</code> is only used when
+        <code>kind</code> is <code>transfer</code>; leave it blank otherwise (and leave
+        <code>category</code> blank for transfers).
+      </p>
     </div>
   </section>
 </div>

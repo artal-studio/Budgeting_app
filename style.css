@@ -15,6 +15,8 @@
 
 * { box-sizing: border-box; }
 
+html, body { overflow-x: hidden; max-width: 100%; }
+
 body {
   margin: 0;
   background: var(--bg);
@@ -33,7 +35,7 @@ button:focus-visible, input:focus-visible, select:focus-visible {
 }
 
 /* ---------- Shell ---------- */
-#app { max-width: 720px; margin: 0 auto; padding: 0 16px 64px; }
+#app { max-width: 720px; margin: 0 auto; padding: 0 16px 64px; width: 100%; }
 
 header.top {
   display: flex;
@@ -69,13 +71,17 @@ header.top button.link { font-size: 0.85rem; }
 }
 .balance-block .value.negative { color: var(--expense); }
 
-/* ---------- Tabs ---------- */
+/* ---------- Tabs (horizontally scrollable so they never widen the page) ---------- */
 nav.tabs {
   display: flex;
   gap: 4px;
   margin: 18px 0;
   border-bottom: 1px solid var(--line);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
 }
+nav.tabs::-webkit-scrollbar { display: none; }
 nav.tabs button {
   background: none;
   border: none;
@@ -86,6 +92,8 @@ nav.tabs button {
   cursor: pointer;
   border-bottom: 2px solid transparent;
   margin-bottom: -1px;
+  white-space: nowrap;
+  flex: 0 0 auto;
 }
 nav.tabs button.active {
   color: var(--ink);
@@ -102,6 +110,7 @@ nav.tabs button.active {
   border-radius: var(--radius);
   padding: 18px;
   margin-bottom: 16px;
+  max-width: 100%;
 }
 
 .field { margin-bottom: 12px; display: flex; flex-direction: column; gap: 4px; }
@@ -113,22 +122,26 @@ nav.tabs button.active {
   border-radius: 6px;
   background: var(--bg);
   color: var(--ink);
+  width: 100%;
+  max-width: 100%;
 }
 .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 
 .kind-toggle { display: flex; gap: 8px; }
 .kind-toggle button {
   flex: 1;
-  padding: 9px 10px;
+  padding: 9px 8px;
   border-radius: 6px;
   border: 1px solid var(--line);
   background: var(--bg);
   font: inherit;
+  font-size: 0.92rem;
   cursor: pointer;
   color: var(--ink-soft);
 }
 .kind-toggle button.active[data-kind="expense"] { background: var(--expense); border-color: var(--expense); color: white; }
 .kind-toggle button.active[data-kind="income"] { background: var(--income); border-color: var(--income); color: white; }
+.kind-toggle button.active[data-kind="transfer"] { background: var(--ink); border-color: var(--ink); color: white; }
 
 button.primary {
   width: 100%;
@@ -149,8 +162,11 @@ button.secondary {
   border-radius: 6px;
   background: var(--panel);
   font: inherit;
+  font-size: 0.85rem;
   cursor: pointer;
+  display: inline-block;
 }
+label.file-label { cursor: pointer; }
 button.link {
   background: none;
   border: none;
@@ -174,9 +190,10 @@ ul.tx-list li {
 ul.tx-list li:last-child { border-bottom: none; }
 ul.tx-list .cat { font-weight: 500; }
 ul.tx-list .desc { color: var(--ink-soft); font-size: 0.85rem; }
-ul.tx-list .amount { text-align: right; font-weight: 600; }
+ul.tx-list .amount { text-align: right; font-weight: 600; white-space: nowrap; }
 ul.tx-list .amount.expense { color: var(--expense); }
 ul.tx-list .amount.income { color: var(--income); }
+ul.tx-list .amount.transfer { color: var(--ink-soft); }
 ul.tx-list .del {
   background: none; border: none; color: var(--ink-soft); cursor: pointer; font-size: 1rem; padding: 2px 6px;
 }
@@ -184,35 +201,32 @@ ul.tx-list .del {
 
 /* ---------- Accounts ---------- */
 .acc-row {
-  display: grid;
-  grid-template-columns: 1fr auto auto auto;
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 10px;
+  gap: 8px 10px;
   padding: 10px 0;
   border-bottom: 1px solid var(--line);
 }
 .acc-row:last-child { border-bottom: none; }
-.acc-name { font-weight: 500; }
-.acc-balance { font-weight: 600; text-align: right; }
-@media (max-width: 480px) {
-  .acc-row { grid-template-columns: 1fr auto; }
-  .acc-row .acc-edit { grid-column: 1 / -1; justify-self: start; }
-}
+.acc-name { font-weight: 500; flex: 1 1 auto; min-width: 80px; }
+.acc-balance { font-weight: 600; }
 
 /* ---------- Reports ---------- */
-.report-bar-row { display: grid; grid-template-columns: 120px 1fr 70px; align-items: center; gap: 10px; padding: 6px 0; }
-.report-bar-track { background: var(--bg); border-radius: 4px; height: 10px; overflow: hidden; }
-.report-bar-fill { height: 100%; border-radius: 4px; }
-.report-bar-fill.expense { background: var(--expense); }
-.report-bar-fill.income { background: var(--income); }
-.report-total { text-align: right; font-weight: 600; }
+.rep-summary { font-size: 0.95rem; font-weight: 500; margin: 14px 0; }
 h3.section-title {
   font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-soft);
   margin: 18px 0 8px;
 }
+.chart-box { position: relative; height: 220px; margin-bottom: 10px; }
+.chart-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.cat-amount-row {
+  display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid var(--line); font-size: 0.9rem;
+}
+.cat-amount-row:last-child { border-bottom: none; }
 
 /* ---------- Auth ---------- */
-#auth-view { max-width: 340px; margin: 15vh auto 0; }
+#auth-view { max-width: 340px; margin: 15vh auto 0; padding: 0 16px; }
 #auth-view h1 { text-align: center; margin-bottom: 24px; letter-spacing: 0.04em; text-transform: uppercase; font-size: 1rem; color: var(--ink-soft); }
 .error-text { color: var(--expense); font-size: 0.85rem; margin-top: 6px; min-height: 1.1em; }
 
@@ -224,4 +238,6 @@ h3.section-title {
   .balance-block .value { font-size: 2.1rem; }
   ul.tx-list li { grid-template-columns: 60px 1fr auto; }
   ul.tx-list .del { grid-column: 1 / -1; justify-self: end; margin-top: -6px; }
+  .chart-grid { grid-template-columns: 1fr; }
+  .kind-toggle button { font-size: 0.82rem; padding: 9px 4px; }
 }
