@@ -1,0 +1,227 @@
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap');
+
+:root {
+  --bg: #F3F1EB;
+  --panel: #FFFFFF;
+  --ink: #1C2B26;
+  --ink-soft: #5A6862;
+  --line: #DAD5C8;
+  --income: #1F6F54;
+  --expense: #B3492B;
+  --accent: #C97A4A;
+  --radius: 10px;
+  font-size: 16px;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: 'Inter', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.num, input[type="number"], .amount, time, .csv-hint code {
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+}
+
+button:focus-visible, input:focus-visible, select:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* ---------- Shell ---------- */
+#app { max-width: 720px; margin: 0 auto; padding: 0 16px 64px; }
+
+header.top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 20px 0 12px;
+  border-bottom: 1px solid var(--line);
+}
+header.top h1 {
+  font-size: 1.1rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin: 0;
+  color: var(--ink-soft);
+}
+header.top button.link { font-size: 0.85rem; }
+
+/* Balance: classic ledger "total" line, double rule underneath */
+.balance-block { padding: 22px 0 18px; }
+.balance-block .label {
+  font-size: 0.8rem;
+  color: var(--ink-soft);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.balance-block .value {
+  font-size: 2.6rem;
+  font-weight: 600;
+  padding-bottom: 10px;
+  border-bottom: 3px double var(--ink);
+  display: inline-block;
+  margin-top: 4px;
+}
+.balance-block .value.negative { color: var(--expense); }
+
+/* ---------- Tabs ---------- */
+nav.tabs {
+  display: flex;
+  gap: 4px;
+  margin: 18px 0;
+  border-bottom: 1px solid var(--line);
+}
+nav.tabs button {
+  background: none;
+  border: none;
+  padding: 10px 14px;
+  font: inherit;
+  font-weight: 500;
+  color: var(--ink-soft);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+nav.tabs button.active {
+  color: var(--ink);
+  border-bottom-color: var(--accent);
+}
+
+.view { display: none; }
+.view.active { display: block; }
+
+/* ---------- Panels / forms ---------- */
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 18px;
+  margin-bottom: 16px;
+}
+
+.field { margin-bottom: 12px; display: flex; flex-direction: column; gap: 4px; }
+.field label { font-size: 0.8rem; color: var(--ink-soft); }
+.field input, .field select {
+  font: inherit;
+  padding: 9px 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--ink);
+}
+.row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+.kind-toggle { display: flex; gap: 8px; }
+.kind-toggle button {
+  flex: 1;
+  padding: 9px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  font: inherit;
+  cursor: pointer;
+  color: var(--ink-soft);
+}
+.kind-toggle button.active[data-kind="expense"] { background: var(--expense); border-color: var(--expense); color: white; }
+.kind-toggle button.active[data-kind="income"] { background: var(--income); border-color: var(--income); color: white; }
+
+button.primary {
+  width: 100%;
+  padding: 11px;
+  border: none;
+  border-radius: 6px;
+  background: var(--ink);
+  color: white;
+  font: inherit;
+  font-weight: 500;
+  cursor: pointer;
+}
+button.primary:hover { background: #0f1815; }
+button.primary:disabled { background: var(--line); color: var(--ink-soft); cursor: not-allowed; }
+button.secondary {
+  padding: 9px 14px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel);
+  font: inherit;
+  cursor: pointer;
+}
+button.link {
+  background: none;
+  border: none;
+  color: var(--ink-soft);
+  text-decoration: underline;
+  cursor: pointer;
+  font: inherit;
+  padding: 0;
+}
+
+/* ---------- Transaction list ---------- */
+ul.tx-list { list-style: none; margin: 0; padding: 0; }
+ul.tx-list li {
+  display: grid;
+  grid-template-columns: 78px 1fr auto auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+}
+ul.tx-list li:last-child { border-bottom: none; }
+ul.tx-list .cat { font-weight: 500; }
+ul.tx-list .desc { color: var(--ink-soft); font-size: 0.85rem; }
+ul.tx-list .amount { text-align: right; font-weight: 600; }
+ul.tx-list .amount.expense { color: var(--expense); }
+ul.tx-list .amount.income { color: var(--income); }
+ul.tx-list .del {
+  background: none; border: none; color: var(--ink-soft); cursor: pointer; font-size: 1rem; padding: 2px 6px;
+}
+.empty { color: var(--ink-soft); font-size: 0.9rem; padding: 8px 0; }
+
+/* ---------- Accounts ---------- */
+.acc-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+}
+.acc-row:last-child { border-bottom: none; }
+.acc-name { font-weight: 500; }
+.acc-balance { font-weight: 600; text-align: right; }
+@media (max-width: 480px) {
+  .acc-row { grid-template-columns: 1fr auto; }
+  .acc-row .acc-edit { grid-column: 1 / -1; justify-self: start; }
+}
+
+/* ---------- Reports ---------- */
+.report-bar-row { display: grid; grid-template-columns: 120px 1fr 70px; align-items: center; gap: 10px; padding: 6px 0; }
+.report-bar-track { background: var(--bg); border-radius: 4px; height: 10px; overflow: hidden; }
+.report-bar-fill { height: 100%; border-radius: 4px; }
+.report-bar-fill.expense { background: var(--expense); }
+.report-bar-fill.income { background: var(--income); }
+.report-total { text-align: right; font-weight: 600; }
+h3.section-title {
+  font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-soft);
+  margin: 18px 0 8px;
+}
+
+/* ---------- Auth ---------- */
+#auth-view { max-width: 340px; margin: 15vh auto 0; }
+#auth-view h1 { text-align: center; margin-bottom: 24px; letter-spacing: 0.04em; text-transform: uppercase; font-size: 1rem; color: var(--ink-soft); }
+.error-text { color: var(--expense); font-size: 0.85rem; margin-top: 6px; min-height: 1.1em; }
+
+/* ---------- CSV controls ---------- */
+.csv-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+.csv-hint { font-size: 0.8rem; color: var(--ink-soft); margin-top: 10px; line-height: 1.5; }
+
+@media (max-width: 480px) {
+  .balance-block .value { font-size: 2.1rem; }
+  ul.tx-list li { grid-template-columns: 60px 1fr auto; }
+  ul.tx-list .del { grid-column: 1 / -1; justify-self: end; margin-top: -6px; }
+}

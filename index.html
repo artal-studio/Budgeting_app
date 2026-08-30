@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Ledger</title>
+<meta name="theme-color" content="#1C2B26" />
+<link rel="manifest" href="manifest.json" />
+<link rel="icon" href="icon-192.png" />
+<link rel="apple-touch-icon" href="icon-192.png" />
+<link rel="stylesheet" href="style.css" />
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+</head>
+<body>
+
+<div id="auth-view">
+  <h1>Ledger</h1>
+  <div class="panel">
+    <div class="field">
+      <label for="auth-email">Email</label>
+      <input id="auth-email" type="email" autocomplete="username" />
+    </div>
+    <div class="field">
+      <label for="auth-password">Password</label>
+      <input id="auth-password" type="password" autocomplete="current-password" />
+    </div>
+    <button class="primary" id="auth-submit">Sign in</button>
+    <p class="error-text" id="auth-error"></p>
+  </div>
+</div>
+
+<div id="app" style="display:none;">
+  <header class="top">
+    <h1>Ledger</h1>
+    <button class="link" id="sign-out">Sign out</button>
+  </header>
+
+  <div class="balance-block">
+    <div class="label">Balance</div>
+    <div class="value" id="balance-value">…</div>
+  </div>
+
+  <nav class="tabs">
+    <button data-view="add" class="active">Add</button>
+    <button data-view="transactions">Transactions</button>
+    <button data-view="accounts">Accounts</button>
+    <button data-view="reports">Reports</button>
+    <button data-view="data">Import / Export</button>
+  </nav>
+
+  <!-- ADD -->
+  <section class="view active" id="view-add">
+    <div class="panel">
+      <div class="kind-toggle">
+        <button type="button" data-kind="expense" class="active">Expense</button>
+        <button type="button" data-kind="income">Income</button>
+      </div>
+      <p class="error-text" id="add-needs-account" style="display:none;">
+        No accounts yet — <button class="link" data-goto="accounts">add one</button> before recording a transaction.
+      </p>
+      <div class="row-2" style="margin-top:14px;">
+        <div class="field">
+          <label for="tx-date">Date</label>
+          <input id="tx-date" type="date" />
+        </div>
+        <div class="field">
+          <label for="tx-amount">Amount</label>
+          <input id="tx-amount" type="number" step="0.01" min="0" placeholder="0.00" />
+        </div>
+      </div>
+      <div class="field">
+        <label for="tx-account">Account</label>
+        <select id="tx-account"></select>
+      </div>
+      <div class="field">
+        <label for="tx-category">Category</label>
+        <select id="tx-category"></select>
+      </div>
+      <div class="field" id="new-category-field" style="display:none;">
+        <label for="tx-new-category">New category name</label>
+        <input id="tx-new-category" type="text" placeholder="e.g. Groceries" />
+      </div>
+      <div class="field">
+        <label for="tx-desc">Description (optional)</label>
+        <input id="tx-desc" type="text" placeholder="e.g. Weekly shop" />
+      </div>
+      <button class="primary" id="tx-submit">Save transaction</button>
+      <p class="error-text" id="tx-error"></p>
+    </div>
+  </section>
+
+  <!-- TRANSACTIONS -->
+  <section class="view" id="view-transactions">
+    <div class="panel">
+      <ul class="tx-list" id="tx-list"></ul>
+      <p class="empty" id="tx-empty" style="display:none;">No transactions yet.</p>
+    </div>
+  </section>
+
+  <!-- ACCOUNTS -->
+  <section class="view" id="view-accounts">
+    <div class="panel">
+      <div id="acc-list"></div>
+      <h3 class="section-title">Add an account</h3>
+      <div class="row-2">
+        <div class="field">
+          <label for="acc-name">Name</label>
+          <input id="acc-name" type="text" placeholder="e.g. Checking" />
+        </div>
+        <div class="field">
+          <label for="acc-starting">Starting balance</label>
+          <input id="acc-starting" type="number" step="0.01" placeholder="0.00" />
+        </div>
+      </div>
+      <button class="primary" id="acc-add">Add account</button>
+      <p class="error-text" id="acc-error"></p>
+      <p class="csv-hint">
+        Starting balance is whatever this account holds right now, before you start
+        logging transactions in it here — enter your real current balance and the
+        app tracks the change from that point on.
+      </p>
+    </div>
+  </section>
+
+  <!-- REPORTS -->
+  <section class="view" id="view-reports">
+    <div class="panel">
+      <div class="row-2">
+        <div class="field">
+          <label for="rep-from">From</label>
+          <input id="rep-from" type="date" />
+        </div>
+        <div class="field">
+          <label for="rep-to">To</label>
+          <input id="rep-to" type="date" />
+        </div>
+      </div>
+      <button class="secondary" id="rep-run">Run report</button>
+
+      <h3 class="section-title">Summary</h3>
+      <div class="report-bar-row"><span>Income</span><span></span><span class="report-total" id="rep-income-total">–</span></div>
+      <div class="report-bar-row"><span>Expenses</span><span></span><span class="report-total" id="rep-expense-total">–</span></div>
+      <div class="report-bar-row"><span>Net</span><span></span><span class="report-total" id="rep-net-total">–</span></div>
+
+      <h3 class="section-title">Expenses by category</h3>
+      <div id="rep-expense-breakdown"><p class="empty">Run a report to see this.</p></div>
+
+      <h3 class="section-title">Income by category</h3>
+      <div id="rep-income-breakdown"><p class="empty">Run a report to see this.</p></div>
+    </div>
+  </section>
+
+  <!-- DATA -->
+  <section class="view" id="view-data">
+    <div class="panel">
+      <h3 class="section-title">Export</h3>
+      <div class="csv-actions">
+        <button class="secondary" id="export-all">Export all as CSV</button>
+      </div>
+      <h3 class="section-title">Import</h3>
+      <div class="csv-actions">
+        <input type="file" id="import-file" accept=".csv" />
+      </div>
+      <p class="csv-hint">
+        Expected columns: <code>date,kind,account,category,amount,description</code><br>
+        <code>date</code> as YYYY-MM-DD, <code>kind</code> as expense or income. Unknown accounts and categories are created automatically (new accounts start at a $0 starting balance — edit it on the Accounts tab afterwards if needed).
+      </p>
+      <p class="error-text" id="import-error"></p>
+    </div>
+  </section>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
