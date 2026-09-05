@@ -51,7 +51,7 @@ Supabase database as your Linux browser.
 
 ---
 
-## Already running v1 or v2? Updating without losing data
+## Already running v1, v2, or v3? Updating without losing data
 
 `schema.sql` has dated `MIGRATION vN` sections near the bottom (clearly
 marked). Each only *adds* a column or loosens a constraint — none of them
@@ -59,16 +59,16 @@ touch, rename, or delete existing rows. Steps:
 
 1. In Supabase, **SQL Editor > New query**, paste and run whichever
    `MIGRATION vN` sections you haven't run yet, in order (v2 adds
-   transfers, v3 adds cash-vs-investment accounts). The `create table`
-   statements above them use `if not exists`, so re-running the whole file
-   is harmless but unnecessary.
+   transfers, v3 adds cash-vs-investment accounts, v4 adds optional
+   freelance reserve percentages). The `create table` statements above them
+   use `if not exists`, so re-running the whole file is harmless but
+   unnecessary.
 2. Replace `index.html`, `app.js`, `style.css` on your host with the new
    versions. `schema.sql` isn't deployed anywhere — it's just for you to
    run in Supabase.
-3. Your existing accounts, categories, and transactions are untouched.
-   Every existing account defaults to `type = 'cash'` after v3, so your
-   main balance is identical to before until you mark one as an
-   investment.
+3. Your existing data is untouched. Every existing account defaults to
+   `type = 'cash'` after v3 and has `vat_pct`/`tax_pct`/`cotisation_pct`
+   left blank after v4, so nothing changes until you explicitly set them.
 
 ## Accounts, starting balance, cash vs. investments, and transfers
 
@@ -100,6 +100,47 @@ income or spending.
 First-time login seeds a set of common categories automatically. You still
 need to add at least one account yourself, since the app can't guess your
 account names or real balances.
+
+## Transactions tab: filter by account
+
+A dropdown above the transaction list lets you view all transactions or
+just one account's — grouped Cash / Investments, same as the other account
+pickers. Handy for reconciling one account against a real statement to
+spot what hasn't been entered yet.
+
+## Projection tab
+
+Projects your cash (not investment) balance forward from today, based on
+average monthly income minus expenses over a lookback window you choose
+(3/6/12 months). The computed average is editable — override it to test a
+scenario (e.g. "what if I cut spending by 200/month"). Shows a line chart
+and, if trending down, the month your cash would hit €0. Nothing here is
+persisted — it's recalculated fresh every time you open the tab.
+
+Transfers, including money moved into an investment account, are excluded
+from the average — so if you regularly move cash into investments, the
+projection won't reflect that outflow. Override the assumed monthly
+number yourself if you want to account for it.
+
+## Freelance tab
+
+For a professional/client-revenue account. Set VAT / Tax / Cotisation
+percentages on an account (Accounts tab → pencil icon → "Freelance
+reserves") to enable this screen for it. It shows, cumulatively since the
+account's starting balance:
+
+- **Reserved** per category: `(all-time revenue on this account × that
+  percentage) − whatever you've already paid out`, where a "payment" is
+  any expense on that account categorized as e.g. "VAT payment" (created
+  automatically the first time you open this tab).
+- **Professional expenses**: everything else spent from the account.
+- **Available ("mine")**: current balance minus everything reserved —
+  what's genuinely free to spend on the business or draw out.
+
+Paying yourself is just a Transfer from this account to a personal cash
+account — no separate mechanism needed. If you ever pay a quarterly VAT
+bill, log it as an expense on this account in the "VAT payment" category
+(same idea for tax/cotisations) and the reserved amount drops accordingly.
 
 ## Backup and restore
 

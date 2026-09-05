@@ -117,3 +117,14 @@ where t.id > t2.id
 -- ===========================================================================
 
 alter table accounts add column if not exists type text not null default 'cash' check (type in ('cash','investment'));
+
+-- ===========================================================================
+-- MIGRATION v4: run this if you already have data from v1/v2/v3.
+-- Purely additive. Adds: optional freelance reserve percentages per account
+-- (VAT / tax / cotisations), used by the Freelance tab. All nullable —
+-- every existing account is unaffected until you set these on one account.
+-- ===========================================================================
+
+alter table accounts add column if not exists vat_pct numeric(5,2);
+alter table accounts add column if not exists tax_pct numeric(5,2);
+alter table accounts add column if not exists cotisation_pct numeric(5,2);

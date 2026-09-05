@@ -48,6 +48,8 @@
     <button data-view="transactions">Transactions</button>
     <button data-view="accounts">Accounts</button>
     <button data-view="reports">Reports</button>
+    <button data-view="projection">Projection</button>
+    <button data-view="freelance">Freelance</button>
     <button data-view="data">Backup</button>
   </nav>
 
@@ -108,6 +110,10 @@
   <!-- TRANSACTIONS -->
   <section class="view" id="view-transactions">
     <div class="panel">
+      <div class="field">
+        <label for="tx-filter-account">Filter by account</label>
+        <select id="tx-filter-account"></select>
+      </div>
       <ul class="tx-list" id="tx-list"></ul>
       <p class="empty" id="tx-empty" style="display:none;">No transactions yet.</p>
     </div>
@@ -178,6 +184,77 @@
     </div>
   </section>
 
+  <!-- PROJECTION -->
+  <section class="view" id="view-projection">
+    <div class="panel">
+      <p class="csv-hint">
+        Projects your <strong>cash</strong> balance forward from today, based on your
+        average monthly income minus expenses (investment accounts and transfers are
+        excluded). Nothing here is saved — it recalculates fresh each time you open
+        this tab, and you can override the numbers to test a scenario.
+      </p>
+      <div class="row-2">
+        <div class="field">
+          <label for="proj-lookback">Base average on last</label>
+          <select id="proj-lookback">
+            <option value="3">3 months</option>
+            <option value="6" selected>6 months</option>
+            <option value="12">12 months</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="proj-horizon">Project forward (months)</label>
+          <input id="proj-horizon" type="number" min="1" max="60" value="12" />
+        </div>
+      </div>
+      <div class="field">
+        <label for="proj-net-override">Assumed net change per month (€, editable)</label>
+        <input id="proj-net-override" type="number" step="0.01" />
+      </div>
+      <button class="secondary" id="proj-run">Recalculate</button>
+      <p class="rep-summary" id="proj-status">Open this tab to calculate a projection.</p>
+      <div class="chart-box"><canvas id="chart-projection"></canvas></div>
+    </div>
+  </section>
+
+  <!-- FREELANCE -->
+  <section class="view" id="view-freelance">
+    <div class="panel" id="freelance-setup" style="display:none;">
+      <p class="csv-hint">
+        No professional account is configured yet. Open the <strong>Accounts</strong>
+        tab, click the pencil icon on the account your client revenue arrives in, and
+        set its VAT / Tax / Cotisation percentages there (leave any of them blank if
+        not applicable). This screen will pick it up automatically.
+      </p>
+    </div>
+    <div class="panel" id="freelance-main" style="display:none;">
+      <div class="field" id="freelance-account-field" style="display:none;">
+        <label for="freelance-account">Account</label>
+        <select id="freelance-account"></select>
+      </div>
+      <h3 class="section-title">Current balance</h3>
+      <p class="rep-summary" id="freelance-balance">…</p>
+
+      <h3 class="section-title">Reserved (not yours to spend)</h3>
+      <div id="freelance-reserved-list"></div>
+      <p class="rep-summary" id="freelance-reserved-total">…</p>
+
+      <div class="chart-box"><canvas id="chart-freelance-split"></canvas></div>
+
+      <h3 class="section-title">Professional expenses (all-time)</h3>
+      <p class="rep-summary" id="freelance-expenses">…</p>
+
+      <h3 class="section-title">Available to draw ("mine")</h3>
+      <p class="rep-summary" id="freelance-available">…</p>
+      <p class="csv-hint">
+        All figures are cumulative since this account's starting balance. Reserves are
+        computed as (all-time revenue × percentage) minus whatever you've already paid
+        out — recorded as an expense in the matching "… payment" category on this
+        account.
+      </p>
+    </div>
+  </section>
+
   <!-- DATA / BACKUP -->
   <section class="view" id="view-data">
     <div class="panel">
@@ -192,7 +269,7 @@
         <label class="secondary file-label">Import accounts CSV<input type="file" id="import-accounts" accept=".csv" hidden></label>
       </div>
       <p class="error-text" id="import-accounts-error"></p>
-      <p class="csv-hint">Columns: <code>name,starting_balance,type</code> (type is <code>cash</code> or <code>investment</code>, defaults to cash if left blank). Matching names update the starting balance and type; new names create the account.</p>
+      <p class="csv-hint">Columns: <code>name,starting_balance,type,vat_pct,tax_pct,cotisation_pct</code> (type is <code>cash</code> or <code>investment</code>, defaults to cash if blank; the three percentages are optional, leave blank if not applicable). Matching names update the account; new names create it.</p>
 
       <h3 class="section-title">Categories</h3>
       <div class="csv-actions">

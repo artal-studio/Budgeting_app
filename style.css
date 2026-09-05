@@ -127,6 +127,7 @@ nav.tabs button.active {
   max-width: 100%;
 }
 .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
 
 .kind-toggle { display: flex; gap: 8px; }
 .kind-toggle button {
@@ -292,4 +293,5 @@ h3.section-title {
   ul.tx-list .del { grid-column: 1 / -1; justify-self: end; margin-top: -6px; }
   .chart-grid { grid-template-columns: 1fr; }
   .kind-toggle button { font-size: 0.82rem; padding: 9px 4px; }
+  .row-3 { grid-template-columns: 1fr; }
 }
