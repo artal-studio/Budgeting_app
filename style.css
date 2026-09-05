@@ -70,6 +70,7 @@ header.top button.link { font-size: 0.85rem; }
   margin-top: 4px;
 }
 .balance-block .value.negative { color: var(--expense); }
+.balance-sub { font-size: 0.85rem; color: var(--ink-soft); margin-top: 8px; }
 
 /* ---------- Tabs (horizontally scrollable so they never widen the page) ---------- */
 nav.tabs {
@@ -139,6 +140,7 @@ nav.tabs button.active {
   cursor: pointer;
   color: var(--ink-soft);
 }
+.kind-toggle button.active { background: var(--ink); border-color: var(--ink); color: white; }
 .kind-toggle button.active[data-kind="expense"] { background: var(--expense); border-color: var(--expense); color: white; }
 .kind-toggle button.active[data-kind="income"] { background: var(--income); border-color: var(--income); color: white; }
 .kind-toggle button.active[data-kind="transfer"] { background: var(--ink); border-color: var(--ink); color: white; }
@@ -200,17 +202,67 @@ ul.tx-list .del {
 .empty { color: var(--ink-soft); font-size: 0.9rem; padding: 8px 0; }
 
 /* ---------- Accounts ---------- */
+.acc-group { margin-bottom: 6px; }
+.acc-group-head {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-soft);
+  padding: 10px 0 4px;
+  border-bottom: 1px solid var(--line);
+}
 .acc-row {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  gap: 8px 10px;
+  gap: 10px;
   padding: 10px 0;
   border-bottom: 1px solid var(--line);
 }
 .acc-row:last-child { border-bottom: none; }
-.acc-name { font-weight: 500; flex: 1 1 auto; min-width: 80px; }
-.acc-balance { font-weight: 600; }
+.acc-name { font-weight: 500; flex: 1 1 auto; min-width: 0; }
+.acc-balance-chip {
+  background: rgba(201, 122, 74, 0.14);
+  border-radius: 6px;
+  padding: 4px 10px;
+}
+.acc-balance { font-weight: 600; font-size: 1.02rem; }
+.icon-btn {
+  background: none;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 auto;
+  font-size: 0.95rem;
+  color: var(--ink-soft);
+  cursor: pointer;
+}
+.icon-btn:hover { background: var(--bg); }
+.panel-inset {
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 14px;
+  margin: 10px 0 18px;
+}
+.acc-edit-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-weight: 500;
+  margin-bottom: 10px;
+}
+.del-text {
+  background: none;
+  border: none;
+  color: var(--expense);
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+  padding: 9px 4px;
+}
 
 /* ---------- Reports ---------- */
 .rep-summary { font-size: 0.95rem; font-weight: 500; margin: 14px 0; }

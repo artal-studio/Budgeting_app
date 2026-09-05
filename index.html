@@ -38,8 +38,9 @@
   </header>
 
   <div class="balance-block">
-    <div class="label">Balance</div>
+    <div class="label">Available (cash)</div>
     <div class="value" id="balance-value">…</div>
+    <div class="balance-sub" id="balance-sub" style="display:none;"></div>
   </div>
 
   <nav class="tabs">
@@ -116,7 +117,12 @@
   <section class="view" id="view-accounts">
     <div class="panel">
       <div id="acc-list"></div>
+      <div class="panel-inset" id="acc-edit-panel" style="display:none;"></div>
       <h3 class="section-title">Add an account</h3>
+      <div class="kind-toggle" id="acc-type-toggle" style="margin-bottom:12px;">
+        <button type="button" data-type="cash" class="active">Cash</button>
+        <button type="button" data-type="investment">Investment</button>
+      </div>
       <div class="row-2">
         <div class="field">
           <label for="acc-name">Name</label>
@@ -186,7 +192,7 @@
         <label class="secondary file-label">Import accounts CSV<input type="file" id="import-accounts" accept=".csv" hidden></label>
       </div>
       <p class="error-text" id="import-accounts-error"></p>
-      <p class="csv-hint">Columns: <code>name,starting_balance</code>. Matching names update the starting balance; new names create the account.</p>
+      <p class="csv-hint">Columns: <code>name,starting_balance,type</code> (type is <code>cash</code> or <code>investment</code>, defaults to cash if left blank). Matching names update the starting balance and type; new names create the account.</p>
 
       <h3 class="section-title">Categories</h3>
       <div class="csv-actions">

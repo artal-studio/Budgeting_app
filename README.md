@@ -51,36 +51,51 @@ Supabase database as your Linux browser.
 
 ---
 
-## Already running v1? Updating without losing data
+## Already running v1 or v2? Updating without losing data
 
-`schema.sql` now has a **MIGRATION v2** section near the bottom (clearly
-marked). It only *adds* a column and loosens a constraint — it never
-touches, renames, or deletes existing rows. Steps:
+`schema.sql` has dated `MIGRATION vN` sections near the bottom (clearly
+marked). Each only *adds* a column or loosens a constraint — none of them
+touch, rename, or delete existing rows. Steps:
 
-1. In Supabase, **SQL Editor > New query**, paste and run just the
-   `MIGRATION v2` section (not the whole file — the `create table`
-   statements above it use `if not exists` so re-running them is harmless,
-   but there's no need).
+1. In Supabase, **SQL Editor > New query**, paste and run whichever
+   `MIGRATION vN` sections you haven't run yet, in order (v2 adds
+   transfers, v3 adds cash-vs-investment accounts). The `create table`
+   statements above them use `if not exists`, so re-running the whole file
+   is harmless but unnecessary.
 2. Replace `index.html`, `app.js`, `style.css` on your host with the new
-   versions. `schema.sql` isn't deployed anywhere, it's just for you to run
-   in Supabase, so it doesn't need "hosting."
-3. Your existing accounts, categories, and transactions are untouched —
-   nothing to re-enter.
+   versions. `schema.sql` isn't deployed anywhere — it's just for you to
+   run in Supabase.
+3. Your existing accounts, categories, and transactions are untouched.
+   Every existing account defaults to `type = 'cash'` after v3, so your
+   main balance is identical to before until you mark one as an
+   investment.
 
-## Accounts, starting balance, and transfers
+## Accounts, starting balance, cash vs. investments, and transfers
 
 Every transaction belongs to an account. Each account has a **starting
 balance** — whatever it actually holds today when you create it — and the
 app tracks the change from that point forward using only the transactions
-you log. The top balance is the sum across all accounts; each account's own
-balance and a Rename button are on the Accounts tab. Deleting an account
-deletes every transaction logged against it (confirmation required).
+you log.
+
+Each account is also either **Cash** or **Investment**. The big number at
+the top of the app ("Available") is the sum of your *cash* accounts only —
+what's actually available to spend. Investment/savings account balances
+are summed separately and shown as a smaller line underneath, along with
+your combined net worth. The Accounts tab groups accounts under those two
+headings with a subtotal each. On the Add screen, the account picker lists
+cash accounts first, then investment accounts, as two labeled groups.
+
+Each account row shows its name and balance; click the pencil icon to
+rename it, change its starting balance, change cash/investment, or delete
+it — this opens one shared edit panel above "Add an account" rather than
+cluttering every row with buttons.
 
 **Transfers**: pick "Transfer" instead of Expense/Income, choose a
 *from* and *to* account, no category needed. This moves money between your
-own accounts without counting as income or expense — it changes both
-account balances but is excluded from the Reports totals and charts, since
-it isn't real income or spending.
+own accounts (including from a cash account into an investment account)
+without counting as income or expense — it changes both account balances
+but is excluded from the Reports totals and charts, since it isn't real
+income or spending.
 
 First-time login seeds a set of common categories automatically. You still
 need to add at least one account yourself, since the app can't guess your
@@ -93,8 +108,9 @@ transactions — which together are a complete backup.
 
 ```
 # accounts.csv
-name,starting_balance
-Checking,1250.00
+name,starting_balance,type
+Checking,1250.00,cash
+Brokerage,8400.00,investment
 
 # categories.csv
 name,kind

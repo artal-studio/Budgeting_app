@@ -154,7 +154,7 @@ document.querySelectorAll(".kind-toggle button").forEach((btn) => {
 // ---------------- Accounts ----------------
 
 async function loadAccounts() {
-  const { data, error } = await sb.from("accounts").select("id, name, starting_balance").order("name");
+  const { data, error } = await sb.from("accounts").select("id, name, starting_balance, type").order("name");
   if (error) { console.error(error); return; }
   accounts = data || [];
 }
@@ -174,18 +174,35 @@ function populateAccountSelects() {
     const sel = $(id);
     const prev = sel.value;
     sel.innerHTML = "";
-    accounts.forEach((a) => {
-      const opt = document.createElement("option");
-      opt.value = a.id;
-      opt.textContent = a.name;
-      sel.appendChild(opt);
-    });
+    const cashAccs = accounts.filter((a) => a.type !== "investment");
+    const invAccs = accounts.filter((a) => a.type === "investment");
+    if (cashAccs.length) {
+      const og = document.createElement("optgroup");
+      og.label = "Cash";
+      cashAccs.forEach((a) => og.appendChild(new Option(a.name, a.id)));
+      sel.appendChild(og);
+    }
+    if (invAccs.length) {
+      const og = document.createElement("optgroup");
+      og.label = "Investments / Savings";
+      invAccs.forEach((a) => og.appendChild(new Option(a.name, a.id)));
+      sel.appendChild(og);
+    }
     if (prev) sel.value = prev;
   }
   const hasAccounts = accounts.length > 0;
   $("#tx-submit").disabled = !hasAccounts;
   $("#add-needs-account").style.display = hasAccounts ? "none" : "block";
 }
+
+let newAccountType = "cash";
+document.querySelectorAll("#acc-type-toggle button").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll("#acc-type-toggle button").forEach((b) => b.classList.remove("active"));
+    btn.classList.add("active");
+    newAccountType = btn.dataset.type;
+  });
+});
 
 $("#acc-add").addEventListener("click", async () => {
   $("#acc-error").textContent = "";
@@ -196,72 +213,134 @@ $("#acc-add").addEventListener("click", async () => {
     $("#acc-error").textContent = "An account with that name already exists.";
     return;
   }
-  const { data, error } = await sb.from("accounts").insert({ name, starting_balance: starting || 0 }).select().single();
+  const { data, error } = await sb.from("accounts").insert({ name, starting_balance: starting || 0, type: newAccountType }).select().single();
   if (error) { $("#acc-error").textContent = error.message; return; }
   accounts.push(data);
   $("#acc-name").value = "";
   $("#acc-starting").value = "";
+  document.querySelectorAll("#acc-type-toggle button").forEach((b) => b.classList.toggle("active", b.dataset.type === "cash"));
+  newAccountType = "cash";
   populateAccountSelects();
   renderAccountsPanel();
   await refreshBalances();
 });
+
+const ACCOUNT_GROUPS = [
+  { type: "cash", label: "Cash", subtotalId: "acc-subtotal-cash" },
+  { type: "investment", label: "Investments / Savings", subtotalId: "acc-subtotal-investment" },
+];
 
 function renderAccountsPanel() {
   const list = $("#acc-list");
   list.innerHTML = "";
   if (!accounts.length) {
     list.innerHTML = '<p class="empty">No accounts yet — add one below.</p>';
+    closeAccountEditPanel();
     return;
   }
-  for (const a of accounts) {
-    const row = document.createElement("div");
-    row.className = "acc-row";
-    row.innerHTML = `
-      <span class="acc-name">${escapeHtml(a.name)}</span>
-      <span class="acc-balance num" id="acc-balance-${a.id}">…</span>
-      <button class="secondary acc-rename" data-id="${a.id}">Rename</button>
-      <button class="secondary acc-edit" data-id="${a.id}">Starting balance</button>
-      <button class="del" data-id="${a.id}" title="Delete account">✕</button>
-    `;
-    list.appendChild(row);
+  for (const g of ACCOUNT_GROUPS) {
+    const rows = accounts.filter((a) => a.type === g.type);
+    if (!rows.length) continue;
+    const section = document.createElement("div");
+    section.className = "acc-group";
+    section.innerHTML = `<div class="acc-group-head"><span>${g.label}</span><span class="num" id="${g.subtotalId}">…</span></div>`;
+    for (const a of rows) {
+      const row = document.createElement("div");
+      row.className = "acc-row";
+      row.innerHTML = `
+        <span class="acc-name">${escapeHtml(a.name)}</span>
+        <span class="acc-balance-chip"><span class="acc-balance num" id="acc-balance-${a.id}">…</span></span>
+        <button class="icon-btn acc-edit-toggle" data-id="${a.id}" title="Edit ${escapeHtml(a.name)}" aria-label="Edit ${escapeHtml(a.name)}">✎</button>
+      `;
+      section.appendChild(row);
+    }
+    list.appendChild(section);
   }
-  list.querySelectorAll(".acc-rename").forEach((btn) => {
-    btn.addEventListener("click", async () => {
-      const acc = accounts.find((a) => a.id === btn.dataset.id);
-      const val = prompt(`New name for "${acc.name}"`, acc.name);
-      if (val === null || !val.trim()) return;
-      const { error } = await sb.from("accounts").update({ name: val.trim() }).eq("id", acc.id);
-      if (error) { alert(error.message); return; }
-      acc.name = val.trim();
-      populateAccountSelects();
-      renderAccountsPanel();
-      await Promise.all([refreshBalances(), loadTransactions()]);
+  list.querySelectorAll(".acc-edit-toggle").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      if ($("#acc-edit-panel").dataset.accountId === btn.dataset.id) closeAccountEditPanel();
+      else openAccountEditPanel(btn.dataset.id);
     });
   });
-  list.querySelectorAll(".acc-edit").forEach((btn) => {
-    btn.addEventListener("click", async () => {
-      const acc = accounts.find((a) => a.id === btn.dataset.id);
-      const val = prompt(`Starting balance for "${acc.name}"`, acc.starting_balance);
-      if (val === null) return;
-      const num = parseFloat(val);
-      if (Number.isNaN(num)) return;
-      const { error } = await sb.from("accounts").update({ starting_balance: num }).eq("id", acc.id);
-      if (error) { alert(error.message); return; }
-      acc.starting_balance = num;
-      await refreshBalances();
+  // Keep the panel in sync if it's open (e.g. after a rename changes the displayed name).
+  if ($("#acc-edit-panel").dataset.accountId) openAccountEditPanel($("#acc-edit-panel").dataset.accountId);
+}
+
+function closeAccountEditPanel() {
+  const panel = $("#acc-edit-panel");
+  panel.dataset.accountId = "";
+  panel.style.display = "none";
+  panel.innerHTML = "";
+}
+
+function openAccountEditPanel(accountId) {
+  const acc = accounts.find((a) => a.id === accountId);
+  if (!acc) { closeAccountEditPanel(); return; }
+  const panel = $("#acc-edit-panel");
+  panel.dataset.accountId = accountId;
+  panel.style.display = "block";
+  panel.innerHTML = `
+    <div class="acc-edit-head">
+      <span>Editing "${escapeHtml(acc.name)}"</span>
+      <button class="link" id="acc-edit-close">Close</button>
+    </div>
+    <div class="kind-toggle" id="acc-edit-type-toggle" style="margin-bottom:12px;">
+      <button type="button" data-type="cash" class="${acc.type !== "investment" ? "active" : ""}">Cash</button>
+      <button type="button" data-type="investment" class="${acc.type === "investment" ? "active" : ""}">Investment</button>
+    </div>
+    <div class="row-2">
+      <div class="field">
+        <label for="acc-edit-name">Name</label>
+        <input id="acc-edit-name" type="text" value="${escapeHtml(acc.name)}" />
+      </div>
+      <div class="field">
+        <label for="acc-edit-balance">Starting balance</label>
+        <input id="acc-edit-balance" type="number" step="0.01" value="${acc.starting_balance}" />
+      </div>
+    </div>
+    <div class="csv-actions">
+      <button class="secondary" id="acc-edit-save">Save changes</button>
+      <button class="del-text" id="acc-edit-delete">Delete account</button>
+    </div>
+    <p class="error-text" id="acc-edit-error"></p>
+  `;
+
+  let editType = acc.type === "investment" ? "investment" : "cash";
+  panel.querySelectorAll("#acc-edit-type-toggle button").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      panel.querySelectorAll("#acc-edit-type-toggle button").forEach((b) => b.classList.remove("active"));
+      btn.classList.add("active");
+      editType = btn.dataset.type;
     });
   });
-  list.querySelectorAll(".acc-row .del").forEach((btn) => {
-    btn.addEventListener("click", async () => {
-      const acc = accounts.find((a) => a.id === btn.dataset.id);
-      if (!confirm(`Delete "${acc.name}"? This also deletes every transaction recorded against it (including transfers to/from it).`)) return;
-      const { error } = await sb.from("accounts").delete().eq("id", acc.id);
-      if (error) { alert(error.message); return; }
-      accounts = accounts.filter((a) => a.id !== acc.id);
-      populateAccountSelects();
-      renderAccountsPanel();
-      await Promise.all([refreshBalances(), loadTransactions()]);
-    });
+
+  $("#acc-edit-close").addEventListener("click", closeAccountEditPanel);
+
+  $("#acc-edit-save").addEventListener("click", async () => {
+    $("#acc-edit-error").textContent = "";
+    const newName = $("#acc-edit-name").value.trim();
+    const newBalance = parseFloat($("#acc-edit-balance").value);
+    if (!newName) { $("#acc-edit-error").textContent = "Name can't be empty."; return; }
+    if (Number.isNaN(newBalance)) { $("#acc-edit-error").textContent = "Starting balance must be a number."; return; }
+    const { error } = await sb.from("accounts").update({ name: newName, starting_balance: newBalance, type: editType }).eq("id", acc.id);
+    if (error) { $("#acc-edit-error").textContent = error.message; return; }
+    acc.name = newName;
+    acc.starting_balance = newBalance;
+    acc.type = editType;
+    populateAccountSelects();
+    renderAccountsPanel();
+    await Promise.all([refreshBalances(), loadTransactions()]);
+  });
+
+  $("#acc-edit-delete").addEventListener("click", async () => {
+    if (!confirm(`Delete "${acc.name}"? This also deletes every transaction recorded against it (including transfers to/from it).`)) return;
+    const { error } = await sb.from("accounts").delete().eq("id", acc.id);
+    if (error) { $("#acc-edit-error").textContent = error.message; return; }
+    accounts = accounts.filter((a) => a.id !== acc.id);
+    closeAccountEditPanel();
+    populateAccountSelects();
+    renderAccountsPanel();
+    await Promise.all([refreshBalances(), loadTransactions()]);
   });
 }
 
@@ -317,9 +396,9 @@ $("#tx-submit").addEventListener("click", async () => {
 
 // ---------------- Balances ----------------
 
-async function refreshBalances() {
+async function computeBalances() {
   const { data, error } = await sb.from("transactions").select("account_id, kind, amount, transfer_to_account_id");
-  if (error) { console.error(error); return; }
+  if (error) { console.error(error); return { byAccount: {}, cashTotal: 0, investmentTotal: 0 }; }
 
   const netByAccount = {};
   const add = (id, delta) => { netByAccount[id] = (netByAccount[id] || 0) + delta; };
@@ -330,17 +409,40 @@ async function refreshBalances() {
     else if (t.kind === "transfer") { add(t.account_id, -amt); add(t.transfer_to_account_id, amt); }
   }
 
-  let total = 0;
+  const byAccount = {};
+  let cashTotal = 0, investmentTotal = 0;
   for (const a of accounts) {
     const balance = Number(a.starting_balance) + (netByAccount[a.id] || 0);
-    total += balance;
-    const el = document.getElementById(`acc-balance-${a.id}`);
-    if (el) el.textContent = money(balance);
+    byAccount[a.id] = balance;
+    if (a.type === "investment") investmentTotal += balance; else cashTotal += balance;
   }
+  return { byAccount, cashTotal, investmentTotal };
+}
+
+async function refreshBalances() {
+  const { byAccount, cashTotal, investmentTotal } = await computeBalances();
+
+  for (const a of accounts) {
+    const el = document.getElementById(`acc-balance-${a.id}`);
+    if (el) el.textContent = money(byAccount[a.id] || 0);
+  }
+  const cashEl = document.getElementById("acc-subtotal-cash");
+  if (cashEl) cashEl.textContent = money(cashTotal);
+  const invEl = document.getElementById("acc-subtotal-investment");
+  if (invEl) invEl.textContent = money(investmentTotal);
 
   const el = $("#balance-value");
-  el.textContent = money(total);
-  el.classList.toggle("negative", total < 0);
+  el.textContent = money(cashTotal);
+  el.classList.toggle("negative", cashTotal < 0);
+
+  const sub = $("#balance-sub");
+  const hasInvestments = accounts.some((a) => a.type === "investment");
+  if (hasInvestments) {
+    sub.style.display = "block";
+    sub.textContent = `Investments ${money(investmentTotal)} · Net worth ${money(cashTotal + investmentTotal)}`;
+  } else {
+    sub.style.display = "none";
+  }
 }
 
 // ---------------- Transactions list ----------------
@@ -493,7 +595,7 @@ function renderSummaryBar(income, expense, net) {
 // ---------------- Backup: Accounts ----------------
 
 $("#export-accounts").addEventListener("click", () => {
-  const rows = [["name", "starting_balance"], ...accounts.map((a) => [a.name, Number(a.starting_balance).toFixed(2)])];
+  const rows = [["name", "starting_balance", "type"], ...accounts.map((a) => [a.name, Number(a.starting_balance).toFixed(2), a.type || "cash"])];
   downloadCsv(rows, "ledger-accounts");
 });
 
@@ -510,13 +612,15 @@ $("#import-accounts").addEventListener("change", async (e) => {
           const name = (row.name || "").trim();
           if (!name) continue;
           const startBal = parseFloat(row.starting_balance || "0") || 0;
+          const type = (row.type || "").trim().toLowerCase() === "investment" ? "investment" : "cash";
           const existing = accounts.find((a) => a.name.toLowerCase() === name.toLowerCase());
           if (existing) {
-            const { error } = await sb.from("accounts").update({ starting_balance: startBal }).eq("id", existing.id);
+            const { error } = await sb.from("accounts").update({ starting_balance: startBal, type }).eq("id", existing.id);
             if (error) throw error;
             existing.starting_balance = startBal;
+            existing.type = type;
           } else {
-            const { data, error } = await sb.from("accounts").insert({ name, starting_balance: startBal }).select().single();
+            const { data, error } = await sb.from("accounts").insert({ name, starting_balance: startBal, type }).select().single();
             if (error) throw error;
             accounts.push(data);
           }

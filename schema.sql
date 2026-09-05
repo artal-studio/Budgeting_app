@@ -108,3 +108,12 @@ where t.id > t2.id
   and coalesce(t.category_id::text,'') = coalesce(t2.category_id::text,'')
   and t.amount = t2.amount
   and coalesce(t.description,'') = coalesce(t2.description,'');
+
+-- ===========================================================================
+-- MIGRATION v3: run this if you already have data from v1/v2.
+-- Purely additive. Adds: cash vs. investment account classification.
+-- Every existing account defaults to 'cash', so your main balance is
+-- unchanged until you mark an account as 'investment'.
+-- ===========================================================================
+
+alter table accounts add column if not exists type text not null default 'cash' check (type in ('cash','investment'));
